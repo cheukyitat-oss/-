@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中華歷史冒險王：從遠古到秦朝 - 線上桌遊</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #fff9e6 0%, #ffeedd 50%, #f7e2cc 100%);
+            touch-action: manipulation;
+        }
+        .font-title {
+            font-family: 'ZCOOL KuaiLe', 'Noto Sans TC', cursive;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d97706;
+            border-radius: 4px;
+        }
+        /* Dice Animation */
+        .dice-rolling {
+            animation: roll 0.6s infinite linear;
+        }
+        @keyframes roll {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.15); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+        /* Board tile glow */
+        .tile-active {
+            box-shadow: 0 0 15px #f59e0b;
+            border-color: #d97706 !important;
+        }
+        /* Pawn Hop Animation */
+        .pawn-hop {
+            animation: hop 0.3s ease-in-out;
+        }
+        @keyframes hop {
+            0% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-16px) scale(1.2); }
+            100% { transform: translateY(0) scale(1); }
+        }
+        /* Pattern Overlay */
+        .bg-pattern {
+            background-color: #fffaf0;
+            background-image: radial-gradient(#fef3c7 2px, transparent 2px), radial-gradient(#fef3c7 2px, #fffaf0 2px);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+        }
+        /* Modal Backdrop */
+        .modal-active {
+            display: flex !important;
+            animation: fadeIn 0.25s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 bg-pattern flex flex-col justify-between items-center p-2 sm:p-4 select-none">
+
+    <!-- Header Banner -->
+    <header class="w-full max-w-5xl bg-gradient-to-r from-red-800 via-amber-700 to-red-800 text-white rounded-2xl p-3 sm:p-4 shadow-lg border-2 border-amber-300 flex flex-wrap justify-between items-center mb-3">
+        <div class="flex items-center space-x-3">
+            <div class="text-3xl sm:text-4xl">🏛️</div>
+            <div>
+                <h1 class="text-xl sm:text-3xl font-bold font-title tracking-wide text-amber-200 drop-shadow">中華歷史冒險王</h1>
+                <p class="text-xs sm:text-sm text-amber-100 opacity-90">從遠古先民到秦朝大一統 ｜ 小二歷史桌遊</p>
+            </div>
+        </div>
+
+        <!-- Dashboard Stats -->
+        <div class="flex items-center space-x-3 sm:space-x-6 mt-2 sm:mt-0 bg-red-950/40 px-4 py-2 rounded-xl border border-amber-400/30">
+            <div class="flex items-center space-x-1.5">
+                <span class="text-2xl">⭐</span>
+                <div>
+                    <div class="text-xs text-amber-200">獲得星星</div>
+                    <div id="starCount" class="text-lg font-bold text-yellow-300">0</div>
+                </div>
+            </div>
+            <div class="flex items-center space-x-1.5">
+                <span class="text-2xl">🎯</span>
+                <div>
+                    <div class="text-xs text-amber-200">當前位置</div>
+                    <div id="positionDisplay" class="text-lg font-bold text-white">第 1 格</div>
+                </div>
+            </div>
+            <button onclick="resetGame()" class="bg-amber-500 hover:bg-amber-400 text-red-950 font-bold px-3 py-1.5 rounded-lg text-xs sm:text-sm shadow transition border border-amber-200 active:scale-95">
+                🔄 重置遊戲
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="w-full max-w-5xl flex flex-col lg:flex-row gap-4 items-stretch mb-4">
+
+        <!-- Board Column -->
+        <div class="flex-1 bg-amber-50/90 rounded-2xl p-3 sm:p-5 shadow-xl border-4 border-amber-600 relative flex flex-col justify-between">
+            
+            <!-- Progress Bar -->
+            <div class="w-full bg-amber-200 rounded-full h-3.5 mb-3 overflow-hidden border border-amber-400">
+                <div id="progressBar" class="bg-gradient-to-r from-amber-500 to-emerald-500 h-full w-[3%] transition-all duration-500"></div>
+            </div>
+
+            <!-- 6x6 Snakes & Ladders Grid Board -->
+            <div id="boardGrid" class="grid grid-cols-6 gap-1 sm:gap-2 sm:p-2 bg-gradient-to-b from-amber-100 to-orange-100 rounded-xl border-2 border-amber-400 shadow-inner">
+                <!-- 36 Tiles generated dynamically by JavaScript -->
+            </div>
+
+            <!-- Legend Info Bar below board -->
+            <div class="mt-3 flex flex-wrap justify-around text-xs sm:text-sm text-amber-900 font-bold bg-amber-200/60 p-2 rounded-lg gap-2">
+                <span class="flex items-center gap-1">🔥 遠古用火 (+3格)</span>
+                <span class="flex items-center gap-1">🐛 嫘祖養蠶 (+3格)</span>
+                <span class="flex items-center gap-1">🛠️ 大禹疏導 (+3格)</span>
+                <span class="flex items-center gap-1">🏯 萬里長城 (+2格)</span>
+                <span class="flex items-center gap-1">🌟 溫馨加油站 (鼓勵)</span>
+                <span class="flex items-center gap-1">❓ 歷史問答 (+星星)</span>
+            </div>
+        </div>
+
+        <!-- Right Control Panel -->
+        <div class="w-full lg:w-80 bg-gradient-to-b from-red-800 to-amber-900 rounded-2xl p-4 sm:p-5 shadow-xl border-4 border-amber-500 text-white flex flex-col justify-between items-center text-center gap-4">
+            
+            <!-- Role Profile Card -->
+            <div class="w-full bg-red-950/50 rounded-xl p-3 border border-amber-400/40">
+                <div class="text-xs text-amber-300 font-bold mb-1">歷史時空探險家</div>
+                <div class="flex items-center justify-center space-x-2">
+                    <span class="text-4xl filter drop-shadow">👦</span>
+                    <div class="text-left">
+                        <div class="font-bold text-amber-200 text-base">歷史小勇士</div>
+                        <div class="text-xs text-amber-100/80">目標：穩步闖關，回答10題通關！</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Dice Section -->
+            <div class="w-full bg-amber-900/40 rounded-xl p-4 border border-amber-300/30 flex flex-col items-center">
+                <div class="text-sm font-bold text-amber-200 mb-1">🎲 點擊擲骰子前進 (1~3點)</div>
+                <div class="text-xs text-amber-300/80 mb-2">小步前進，細細探索歷史知識！</div>
+                
+                <!-- Dice Graphic -->
+                <div id="diceBox" class="w-24 h-24 bg-gradient-to-br from-amber-100 to-amber-200 border-4 border-amber-500 rounded-2xl shadow-2xl flex items-center justify-center text-5xl font-black text-red-700 my-1 transition transform">
+                    <span id="diceResult">1</span>
+                </div>
+
+                <!-- Action Button -->
+                <button id="rollBtn" onclick="rollDice()" class="w-full mt-3 bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-500 text-red-950 font-black text-lg py-3 px-6 rounded-xl shadow-lg border-2 border-amber-200 hover:brightness-110 active:scale-95 transition">
+                    🎲 擲骰子前進！
+                </button>
+            </div>
+
+            <!-- Game Status / Hint Box -->
+            <div class="w-full bg-red-950/60 rounded-xl p-3 border border-amber-400/30 text-left">
+                <div class="text-xs font-bold text-amber-300 mb-1 flex items-center gap-1">
+                    <span>💡 冒險日誌：</span>
+                </div>
+                <p id="statusMsg" class="text-xs text-amber-100 leading-relaxed min-h-[3rem]">
+                    歡迎來到中華歷史時空地圖！請點擊「擲骰子前進」開始你的遠古探索之旅！
+                </p>
+            </div>
+
+            <!-- Knowledge Summary Badge -->
+            <div class="w-full text-xs text-amber-200/90 bg-amber-950/40 p-2 rounded-lg border border-amber-500/20 leading-relaxed">
+                涵蓋學習主題：50萬年前先民｜炎黃子孫｜黃帝發明｜大禹治水與夏朝｜秦始皇大一統
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center text-xs text-amber-800 font-medium py-1">
+        中華歷史冒險王 ｜ 適用小學二年級歷史與文化互動教學課程
+    </footer>
+
+    <!-- Question Modal -->
+    <div id="questionModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-gradient-to-b from-amber-50 to-orange-100 border-4 border-amber-600 rounded-3xl max-w-xl w-full p-5 sm:p-6 shadow-2xl relative flex flex-col gap-4">
+            
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center border-b-2 border-amber-300 pb-3">
+                <div class="flex items-center space-x-2">
+                    <span class="text-3xl">📜</span>
+                    <h3 class="text-xl sm:text-2xl font-bold font-title text-amber-900">歷史冒險大考驗</h3>
+                </div>
+                <span class="bg-amber-200 text-amber-900 font-bold px-3 py-1 rounded-full text-xs border border-amber-400">
+                    +10 ⭐ 獎勵
+                </span>
+            </div>
+
+            <!-- Question Body -->
+            <div class="bg-white/80 p-4 rounded-2xl border border-amber-200 shadow-inner">
+                <p id="qTag" class="text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">【主題分類】</p>
+                <h4 id="qTitle" class="text-base sm:text-lg font-bold text-slate-800 leading-snug">問題載入中...</h4>
+            </div>
+
+            <!-- Question Options -->
+            <div id="qOptions" class="flex flex-col gap-2.5">
+                <!-- Option buttons generated dynamically -->
+            </div>
+
+            <!-- Answer Feedback Card -->
+            <div id="feedbackCard" class="hidden p-4 rounded-2xl text-left border flex flex-col gap-2">
+                <div id="feedbackTitle" class="font-bold text-lg flex items-center gap-2"></div>
+                <p id="feedbackText" class="text-xs sm:text-sm leading-relaxed"></p>
+                <button id="nextStepBtn" onclick="closeQuestionModal()" class="mt-2 w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded-xl text-sm transition">
+                    繼續前進 ➔
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Popup Modal (For Ladders / Traps) -->
+    <div id="eventModal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+        <div class="bg-gradient-to-b from-amber-50 to-yellow-100 border-4 border-amber-500 rounded-3xl max-w-md w-full p-6 shadow-2xl text-center flex flex-col items-center gap-3 transform transition-all">
+            <div id="eventIcon" class="text-6xl animate-bounce">✨</div>
+            <h3 id="eventTitle" class="text-2xl font-bold font-title text-amber-900">觸發事件</h3>
+            <p id="eventDesc" class="text-sm text-slate-700 leading-relaxed font-medium">說明內容</p>
+            <button onclick="closeEventModal()" class="w-full mt-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-2.5 rounded-xl shadow border border-amber-200">
+                太棒了！我們繼續前進！ ➔
+            </button>
+        </div>
+    </div>
+
+    <!-- Victory Modal -->
+    <div id="victoryModal" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center p-4">
+        <div class="bg-gradient-to-b from-red-700 via-amber-600 to-red-800 border-4 border-yellow-300 rounded-3xl max-w-lg w-full p-6 text-white text-center shadow-2xl flex flex-col items-center gap-4 relative overflow-hidden">
+            <div class="text-6xl animate-pulse mt-2">🏆</div>
+            <h2 class="text-3xl sm:text-4xl font-bold font-title text-yellow-300 drop-shadow">恭喜通關！</h2>
+            <p class="text-base text-amber-100">你順利穿越了從遠古先民到秦朝的歷史時空，榮獲稱號：</p>
+            
+            <div class="bg-yellow-400 text-red-950 font-black text-xl sm:text-2xl py-2 px-6 rounded-2xl shadow-lg border-2 border-white tracking-widest my-1">
+                🎖️ 中華歷史小博士 🎖️
+            </div>
+
+            <div class="flex justify-center items-center gap-2 my-2 text-3xl">
+                <span id="star1">⭐</span>
+                <span id="star2">⭐</span>
+                <span id="star3">⭐</span>
+            </div>
+
+            <div class="bg-red-950/50 p-3 rounded-xl border border-amber-300/30 text-xs text-amber-100 text-left space-y-1 w-full">
+                <div class="font-bold text-amber-300 text-center mb-1">📘 歷史學習大寶典：</div>
+                <div>✓ 50萬年前先民：住山洞、學會用火、採集打獵</div>
+                <div>✓ 炎黃子孫：炎帝與黃帝部落團結合作共同祖先</div>
+                <div>✓ 黃帝發明：倉頡造字傳承歷史、嫘祖養蠶取絲</div>
+                <div>✓ 大禹治水：用疏導法成功治水並建立第一個王朝夏朝</div>
+                <div>✓ 秦朝大一統：秦始皇統一文字貨幣、築長城、造兵馬俑</div>
+            </div>
+
+            <p id="victoryStats" class="text-sm text-amber-200 font-medium">總共獲得 Stars</p>
+
+            <button onclick="resetGame(); closeVictoryModal();" class="w-full mt-2 bg-gradient-to-r from-yellow-300 to-amber-400 text-red-950 font-black py-3 rounded-xl shadow-xl border-2 border-white hover:brightness-110 active:scale-95 text-lg transition">
+                🔄 再玩一次
+            </button>
+        </div>
+    </div>
+
+    <!-- Canvas for Confetti -->
+    <canvas id="confettiCanvas" class="fixed inset-0 pointer-events-none z-50 hidden"></canvas>
+
+    <!-- JavaScript Logic -->
+    <script>
+        /* --- AUDIO SYNTHESIZER (Web Audio API) --- */
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playTone(freq, duration, type = 'sine', startDelay = 0) {
+                try {
+                    this.init();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + startDelay);
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime + startDelay);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + startDelay + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + startDelay);
+                    osc.stop(this.ctx.currentTime + startDelay + duration);
+                } catch(e) {}
+            }
+            step() {
+                this.playTone(400, 0.08, 'triangle');
+            }
+            roll() {
+                for (let i = 0; i < 5; i++) {
+                    this.playTone(200 + Math.random() * 300, 0.05, 'square', i * 0.06);
+                }
+            }
+            correct() {
+                this.playTone(523.25, 0.12, 'sine', 0);     // C5
+                this.playTone(659.25, 0.12, 'sine', 0.12);  // E5
+                this.playTone(783.99, 0.15, 'sine', 0.24);  // G5
+                this.playTone(1046.50, 0.3, 'sine', 0.36);  // C6
+            }
+            wrong() {
+                this.playTone(330, 0.15, 'sine', 0);
+                this.playTone(293.66, 0.25, 'sine', 0.15);
+            }
+            ladder() {
+                this.playTone(350, 0.1, 'sine', 0);
+                this.playTone(450, 0.1, 'sine', 0.1);
+                this.playTone(550, 0.1, 'sine', 0.2);
+                this.playTone(700, 0.2, 'sine', 0.3);
+            }
+            encouragement() {
+                // Gentle, warm encouragement sound for stepping on rest tiles
+                this.playTone(440, 0.12, 'sine', 0);
+                this.playTone(554.37, 0.12, 'sine', 0.1);
+                this.playTone(659.25, 0.2, 'sine', 0.2);
+            }
+            victory() {
+                const notes = [523.25, 659.25, 783.99, 1046.50, 880, 1046.50];
+                notes.forEach((n, idx) => {
+                    this.playTone(n, 0.2, 'triangle', idx * 0.15);
+                });
+            }
+        }
+        const sfx = new SoundEffects();
+
+        /* --- GAME TILES DEFINITION (36 Tiles, 18+ Question Tiles) --- */
+        const BOARD_TILES = [
+            // Topic 1: 50萬年前先民生活 (1 - 7)
+            { id: 1, title: '起點', subtitle: '遠古先民', icon: '🏕️', type: 'start' },
+            { id: 2, title: '山洞棲身', subtitle: '躲避風雨', icon: '⛰️', type: 'normal' },
+            { id: 3, title: '歷史問答', subtitle: '50萬年前棲息地', icon: '❓', type: 'question', qIndex: 0 },
+            { id: 4, title: '學會用火', subtitle: '取暖與燒烤 (+3格)', icon: '🔥', type: 'ladder', target: 7, msg: '先民學會使用火取暖與煮食！溫暖前進 +3 格！' },
+            { id: 5, title: '歷史問答', subtitle: '先民與火的發明', icon: '❓', type: 'question', qIndex: 1 },
+            { id: 6, title: '樹葉獸皮', subtitle: '製作衣裳', icon: '🍃', type: 'normal' },
+            { id: 7, title: '歷史問答', subtitle: '採集與打獵', icon: '❓', type: 'question', qIndex: 2 },
+            
+            // Topic 2: 炎黃子孫由來 (8 - 14)
+            { id: 8, title: '休息充電', subtitle: '沒關係，繼續前進！(-2格)', icon: '💧', type: 'trap', target: 6, msg: '沒關係，我們繼續前進！喝口水休息一下，準備更好出發！（回到 6 格）' },
+            { id: 9, title: '歷史問答', subtitle: '炎帝教導耕種', icon: '❓', type: 'question', qIndex: 3 },
+            { id: 10, title: '部落結盟', subtitle: '炎黃聯盟 (+3格)', icon: '🤝', type: 'ladder', target: 13, msg: '炎帝與黃帝部落攜手合作，華夏大家庭前進 +3 格！' },
+            { id: 11, title: '歷史問答', subtitle: '炎黃子孫由來', icon: '❓', type: 'question', qIndex: 4 },
+            { id: 12, title: '嘗百草', subtitle: '辨識草藥', icon: '🌿', type: 'normal' },
+            { id: 13, title: '歷史問答', subtitle: '炎帝神農氏貢獻', icon: '❓', type: 'question', qIndex: 5 },
+            { id: 14, title: '嫘祖養蠶', subtitle: '取絲做衣 (+3格)', icon: '🐛', type: 'ladder', target: 17, msg: '嫘祖發明養蠶取絲製作美觀衣服！輕鬆前進 +3 格！' },
+
+            // Topic 3: 黃帝時期的重要發明 (15 - 21)
+            { id: 15, title: '歷史問答', subtitle: '養蠶取絲技術', icon: '❓', type: 'question', qIndex: 6 },
+            { id: 16, title: '放慢腳步', subtitle: '沒關係，繼續前進！(-2格)', icon: '🌸', type: 'trap', target: 14, msg: '沒關係，我們繼續前進！欣賞一下沿途風景，積攢更多力量！（回到 14 格）' },
+            { id: 17, title: '歷史問答', subtitle: '倉頡觀察足跡', icon: '❓', type: 'question', qIndex: 7 },
+            { id: 18, title: '倉頡造字', subtitle: '文字誕生 (+3格)', icon: '📜', type: 'ladder', target: 21, msg: '倉頡成功創造文字記錄歷史！智慧前進 +3 格！' },
+            { id: 19, title: '歷史問答', subtitle: '文字對歷史的貢獻', icon: '❓', type: 'question', qIndex: 8 },
+            { id: 20, title: '大洪水襲來', subtitle: '河水氾濫', icon: '🌊', type: 'normal' },
+            { id: 21, title: '歷史問答', subtitle: '鯀治水的方法', icon: '❓', type: 'question', qIndex: 9 },
+
+            // Topic 4: 大禹治水與夏朝成立 (22 - 28)
+            { id: 22, title: '大禹疏導', subtitle: '成功治水 (+3格)', icon: '🛠️', type: 'ladder', target: 25, msg: '大禹開挖渠道疏導大水！暢通無阻前進 +3 格！' },
+            { id: 23, title: '歷史問答', subtitle: '大禹疏導法智慧', icon: '❓', type: 'question', qIndex: 10 },
+            { id: 24, title: '加油驛站', subtitle: '沒關係，繼續前進！(-3格)', icon: '🌟', type: 'trap', target: 21, msg: '沒關係，我們繼續前進！遇到困難不氣餒，大禹也是堅持到底！（回到 21 格）' },
+            { id: 25, title: '歷史問答', subtitle: '三過家門而不入', icon: '❓', type: 'question', qIndex: 11 },
+            { id: 26, title: '第一個王朝', subtitle: '夏朝成立', icon: '🏰', type: 'normal' },
+            { id: 27, title: '歷史問答', subtitle: '夏朝的建立', icon: '❓', type: 'question', qIndex: 12 },
+            { id: 28, title: '秦始皇統一', subtitle: '建立秦朝 (+3格)', icon: '⚔️', type: 'ladder', target: 31, msg: '秦始皇建立第一個大一統王朝秦朝！快速前進 +3 格！' },
+
+            // Topic 5: 秦始皇建立秦朝與偉大工程 (29 - 36)
+            { id: 29, title: '歷史問答', subtitle: '秦朝統一文字小篆', icon: '❓', type: 'question', qIndex: 13 },
+            { id: 30, title: '調整呼吸', subtitle: '沒關係，繼續前進！(-2格)', icon: '🏃', type: 'trap', target: 28, msg: '沒關係，我們繼續前進！調整呼吸，華夏小勇士再接再厲！（回到 28 格）' },
+            { id: 31, title: '歷史問答', subtitle: '統一貨幣圓形方孔', icon: '❓', type: 'question', qIndex: 14 },
+            { id: 32, title: '歷史問答', subtitle: '統一度量衡', icon: '❓', type: 'question', qIndex: 15 },
+            { id: 33, title: '萬里長城', subtitle: '護佑安寧 (+2格)', icon: '🏯', type: 'ladder', target: 35, msg: '修築萬里長城防禦敵軍！勇往直前 +2 格！' },
+            { id: 34, title: '歷史問答', subtitle: '長城與兵馬俑奇觀', icon: '❓', type: 'question', qIndex: 16 },
+            { id: 35, title: '歷史問答', subtitle: '秦朝歷史大總結', icon: '❓', type: 'question', qIndex: 17 },
+            { id: 36, title: '終點', subtitle: '歷史大博士', icon: '🏆', type: 'finish' }
+        ];
+
+        /* --- EXTENDED QUESTION BANK (20 Core Questions) --- */
+        const QUESTION_BANK = [
+            // 50萬年前先民 (0-2)
+            {
+                tag: '單元一：50萬年前先民生活',
+                question: '在大約50萬年前，遠古先民主要是住在什麼地方來遮風擋雨和躲避野獸的？',
+                options: ['A. 天然山洞 ⛰️', 'B. 高樓大廈 🏢', 'C. 木頭房子 🏡'],
+                answer: 0,
+                explanation: '正確！大約50萬年前的先民（如北京人）住在天然山洞裡，靠採集果實和打獵生活。'
+            },
+            {
+                tag: '單元一：50萬年前先民生活',
+                question: '先民學會使用什麼之後，不僅可以用來取暖和照明，還能用來燒烤熟食？',
+                options: ['A. 使用太陽能 ☀️', 'B. 使用火 🔥', 'C. 使用電燈 💡'],
+                answer: 1,
+                explanation: '答對了！學會「使用火」是先民生活的一大進步，火能驅趕野獸並煮熟食物！'
+            },
+            {
+                tag: '單元一：50萬年前先民生活',
+                question: '在還沒有織布機的遠古時期，先民主要是用什麼來製作遮蔽身體的衣服？',
+                options: ['A. 樹葉與獸皮 🍃', 'B. 塑膠雨衣 🌧️', 'C. 棉花布料 👕'],
+                answer: 0,
+                explanation: '完全正確！先民採集樹葉、縫製動物皮毛（獸皮）來禦寒保暖。'
+            },
+            // 炎黃子孫由來 (3-5)
+            {
+                tag: '單元二：炎黃子孫的由來',
+                question: '上古時期的部落首領炎帝（神農氏）教導了先民什麼重要的生存技能？',
+                options: ['A. 駕駛汽車 🚗', 'B. 耕種穀物與辨識草藥 🌾', 'C. 製造飛機 ✈️'],
+                answer: 1,
+                explanation: '答對了！炎帝教導先民播種穀物耕種，還親自「嘗百草」為大家尋找醫病的草藥！'
+            },
+            {
+                tag: '單元二：炎黃子孫的由來',
+                question: '為什麼我們今天常常自稱為「炎黃子孫」？',
+                options: ['A. 因為大家都喜歡黃色 💛', 'B. 因為黃帝打敗了所有人 👑', 'C. 炎帝與黃帝部落結盟合作，是華夏民族共同祖先 🤝'],
+                answer: 2,
+                explanation: '完全正確！炎帝與黃帝兩大部落融合，教導先民耕種與發明，是我們的共同祖先。'
+            },
+            {
+                tag: '單元二：炎黃子孫的由來',
+                question: '炎帝又被稱為「神農氏」，主要是因為他對先民有什麼重大貢獻？',
+                options: ['A. 開拓農耕與發明農具 🚜', 'B. 建造高樓 🏰', 'C. 造出鋼琴 🎹'],
+                answer: 0,
+                explanation: '太棒了！炎帝神農氏教導大家耕種飲食，讓人們不再只靠打獵看天吃飯。'
+            },
+            // 黃帝發明 (6-8)
+            {
+                tag: '單元三：黃帝時期的重要發明',
+                question: '黃帝的妻子嫘祖觀察蠶寶寶吐絲，發明了什麼技術讓人們穿上美好的絲綢衣裳？',
+                options: ['A. 捕魚抓蝦 🐟', 'B. 養蠶取絲 🐛', 'C. 製造磚塊 🧱'],
+                answer: 1,
+                explanation: '答對了！嫘祖發明了「養蠶取絲」，抽出的蠶絲可以織成既輕柔又美麗的絲綢衣服！'
+            },
+            {
+                tag: '單元三：黃帝時期的重要發明',
+                question: '黃帝的手下倉頡觀察鳥獸足跡和自然萬物，發明了什麼讓故事與歷史可以被記錄下來？',
+                options: ['A. 創造文字 📜', 'B. 發明照相機 📷', 'C. 發明電視 📺'],
+                answer: 0,
+                explanation: '太棒了！倉頡造字結束了「結繩記事」的時代，讓中華文化可以傳承千百年。'
+            },
+            {
+                tag: '單元三：黃帝時期的重要發明',
+                question: '黃帝時期發明了能指引方向的工具，幫助軍隊在迷霧中不迷失方向，那是？',
+                options: ['A. 手電筒 🔦', 'B. 指南車 🧭', 'C. 望遠鏡 🔭'],
+                answer: 1,
+                explanation: '完全正確！黃帝發明指南車，能在迷霧中指明方向，展現古人的聰明智慧。'
+            },
+            // 大禹治水與夏朝 (9-12)
+            {
+                tag: '單元四：大禹治水與夏朝',
+                question: '面對世紀大洪水，大禹的父親鯀（gǔn）使用了什麼方法，結果失敗了？',
+                options: ['A. 築堤築牆「堵塞」水流 🧱', 'B. 開挖渠道「疏導」水流 🌊', 'C. 用水泵抽水 🚰'],
+                answer: 0,
+                explanation: '正確！鯀只用「堵塞」的方法，結果水越積越高衝垮堤防；大禹隨後改用「疏導」才成功。'
+            },
+            {
+                tag: '單元四：大禹治水與夏朝',
+                question: '面對世紀大洪水，大禹採用了什麼聰明的方法成功治理了水患？',
+                options: ['A. 搬家到山頂 🏔️', 'B. 開挖河道「疏導」引水入海 🌊', 'C. 建造更大更高的牆 🧱'],
+                answer: 1,
+                explanation: '完全正確！大禹改變父親「堵塞」的做法，改用「疏導」順著水勢開溝引水流入大海！'
+            },
+            {
+                tag: '單元四：大禹治水與夏朝',
+                question: '大禹在治水13年中，展現無私奉獻與高度責任感的故事叫作什麼？',
+                options: ['A. 愚公移山 ⛰️', 'B. 嫦娥奔月 🌙', 'C. 三過家門而不入 🏠'],
+                answer: 2,
+                explanation: '答對了！大禹三次路過家門聽到孩子哭聲都沒進去，全心全意為大家治水，這就是偉大的責任感！'
+            },
+            {
+                tag: '單元四：大禹治水與夏朝',
+                question: '大禹治水成功後，深受大家愛戴，並建立了中國歷史上的第一個王朝，叫作？',
+                options: ['A. 夏朝 👑', 'B. 唐朝 🏮', 'C. 秦朝 ⚔️'],
+                answer: 0,
+                explanation: '正確！大禹建立了中國歷史上第一個王朝——「夏朝」，開啟了新的歷史篇章。'
+            },
+            // 秦始皇大一統 (13-17)
+            {
+                tag: '單元五：秦始皇建立秦朝',
+                question: '秦始皇統一全國後，為了讓大家寫字都能看懂，統一了什麼標準文字？',
+                options: ['A. 英文 🔤', 'B. 小篆文字 ✍️', 'C. 甲骨文 🦴'],
+                answer: 1,
+                explanation: '答對了！秦始皇將全國文字統一為「小篆」，讓各地的公文和書信溝通更暢通！'
+            },
+            {
+                tag: '單元五：秦始皇建立秦朝',
+                question: '秦始皇統一全國後，將全國原本五花八門的貨幣統一為什麼形狀？',
+                options: ['A. 圓形方孔錢 🪙', 'B. 正方形紙幣 💵', 'C. 三角形鐵塊 🔺'],
+                answer: 0,
+                explanation: '答對了！秦始皇統一貨幣為外圓內方的「圓形方孔錢」，讓買賣交易變得非常便利！'
+            },
+            {
+                tag: '單元五：秦始皇建立秦朝',
+                question: '秦始皇統一全國後，還統一了測量長度、容量和重量的標準，這叫作？',
+                options: ['A. 統一度量衡 📏', 'B. 統一交通規則 🚦', 'C. 統一建築風格 🏛️'],
+                answer: 0,
+                explanation: '正確！統一度量衡讓全天下買東西秤重量、量布料都有了統一標準！'
+            },
+            {
+                tag: '單元五：秦始皇建立秦朝',
+                question: '秦始皇為了防禦北方敵人入侵，將各地的城牆連接起來修築了哪項世界奇觀？',
+                options: ['A. 萬里長城 🏯', 'B. 埃菲爾鐵塔 🗼', 'C. 金字塔 🔺'],
+                answer: 0,
+                explanation: '太厲害了！秦始皇修築了綿延山嶺的萬里長城，護佑國家安寧！'
+            },
+            {
+                tag: '單元五：秦始皇建立秦朝',
+                question: '在秦始皇陵墓旁，考古學家發現了地下龐大且栩栩如生的守衛軍隊雕像，叫作？',
+                options: ['A. 兵馬俑 🗿', 'B. 石獅子 🦁', 'C. 銅馬車 🐴'],
+                answer: 0,
+                explanation: '答對了！秦始皇兵馬俑被稱為世界奇蹟，展現了古代高超的雕塑藝術！'
+            }
+        ];
+
+        /* --- GAME STATE --- */
+        let currentTile = 1;
+        let starCount = 0;
+        let isRolling = false;
+        let activeQuestion = null;
+
+        /* --- BOARD GENERATION (Serpentine 6x6 Grid Order) --- */
+        function initBoard() {
+            const boardGrid = document.getElementById('boardGrid');
+            boardGrid.innerHTML = '';
+
+            // Grid ordering for serpentine 6x6 (36 tiles):
+            // Row 6 (top): 36, 35, 34, 33, 32, 31
+            // Row 5: 25, 26, 27, 28, 29, 30
+            // Row 4: 24, 23, 22, 21, 20, 19
+            // Row 3: 13, 14, 15, 16, 17, 18
+            // Row 2: 12, 11, 10, 9, 8, 7
+            // Row 1 (bottom): 1, 2, 3, 4, 5, 6
+            const rowOrders = [
+                [36, 35, 34, 33, 32, 31],
+                [25, 26, 27, 28, 29, 30],
+                [24, 23, 22, 21, 20, 19],
+                [13, 14, 15, 16, 17, 18],
+                [12, 11, 10, 9, 8, 7],
+                [1, 2, 3, 4, 5, 6]
+            ];
+
+            const tileMap = {};
+            BOARD_TILES.forEach(t => tileMap[t.id] = t);
+
+            rowOrders.forEach(row => {
+                row.forEach(tileId => {
+                    const data = tileMap[tileId];
+                    const tileEl = document.createElement('div');
+                    tileEl.id = `tile-${tileId}`;
+                    
+                    // Styling according to tile type
+                    let bgStyle = 'bg-white/90 border-amber-300 text-slate-700';
+                    if (data.type === 'start') bgStyle = 'bg-emerald-100 border-emerald-500 text-emerald-900 font-bold';
+                    else if (data.type === 'finish') bgStyle = 'bg-red-100 border-red-500 text-red-900 font-bold';
+                    else if (data.type === 'ladder') bgStyle = 'bg-amber-100 border-amber-500 text-amber-900';
+                    else if (data.type === 'trap') bgStyle = 'bg-sky-100 border-sky-400 text-sky-900';
+                    else if (data.type === 'question') bgStyle = 'bg-yellow-100 border-yellow-500 text-amber-900';
+
+                    tileEl.className = `relative rounded-xl border-2 p-1 min-h-[58px] sm:min-h-[75px] flex flex-col justify-between items-center text-center transition-all duration-300 shadow-sm ${bgStyle}`;
+                    
+                    tileEl.innerHTML = `
+                        <div class="w-full flex justify-between items-center text-[9px] sm:text-xs font-bold px-0.5">
+                            <span class="bg-amber-200/80 text-amber-900 rounded-full px-1.5 py-0.2">${data.id}</span>
+                            ${data.type === 'ladder' ? '<span class="text-emerald-600 font-black scale-90">⬆️捷徑</span>' : ''}
+                            ${data.type === 'trap' ? '<span class="text-sky-600 font-black scale-90">🌟加油</span>' : ''}
+                            ${data.type === 'question' ? '<span class="text-amber-600 font-black scale-90">⭐問答</span>' : ''}
+                        </div>
+                        <div class="text-lg sm:text-2xl my-0.2 filter drop-shadow">${data.icon}</div>
+                        <div class="text-[10px] sm:text-xs font-bold leading-tight truncate w-full px-0.5">${data.title}</div>
+                        <!-- Pawn Container inside Tile -->
+                        <div id="pawn-container-${tileId}" class="absolute inset-0 flex items-center justify-center pointer-events-none z-10"></div>
+                    `;
+
+                    boardGrid.appendChild(tileEl);
+                });
+            });
+
+            renderPawn();
+            updateUI();
+        }
+
+        /* --- RENDER PLAYER PAWN --- */
+        function renderPawn() {
+            document.querySelectorAll('[id^="pawn-container-"]').forEach(el => el.innerHTML = '');
+
+            const container = document.getElementById(`pawn-container-${currentTile}`);
+            if (container) {
+                const pawn = document.createElement('div');
+                pawn.className = 'w-8 h-8 sm:w-11 sm:h-11 bg-yellow-400 border-2 border-red-700 rounded-full flex items-center justify-center text-lg sm:text-2xl shadow-xl transform transition-transform pawn-hop';
+                pawn.innerHTML = '👦';
+                container.appendChild(pawn);
+            }
+
+            // Highlight Active Tile
+            document.querySelectorAll('[id^="tile-"]').forEach(el => el.classList.remove('tile-active'));
+            const activeTileEl = document.getElementById(`tile-${currentTile}`);
+            if (activeTileEl) activeTileEl.classList.add('tile-active');
+        }
+
+        /* --- DICE ROLLING LOGIC (Range 1 to 3 for steady pacing) --- */
+        async function rollDice() {
+            if (isRolling) return;
+            isRolling = true;
+            sfx.init();
+
+            const rollBtn = document.getElementById('rollBtn');
+            const diceBox = document.getElementById('diceBox');
+            const diceResult = document.getElementById('diceResult');
+            
+            rollBtn.disabled = true;
+            rollBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            diceBox.classList.add('dice-rolling');
+            
+            sfx.roll();
+            updateStatus('🎲 骰子旋轉中...');
+
+            // Animated dice numbers effect (1 to 3)
+            let steps = 0;
+            const rollInterval = setInterval(() => {
+                diceResult.innerText = Math.floor(Math.random() * 3) + 1;
+                steps++;
+            }, 60);
+
+            await new Promise(r => setTimeout(r, 650));
+            clearInterval(rollInterval);
+
+            // Final Dice Value (1 ~ 3)
+            const diceValue = Math.floor(Math.random() * 3) + 1;
+            diceResult.innerText = diceValue;
+            diceBox.classList.remove('dice-rolling');
+
+            updateStatus(`🎲 擲出了 ${diceValue} 點！一步步踏實前進！`);
+            
+            // Move pawn step-by-step
+            await movePawn(diceValue);
+
+            rollBtn.disabled = false;
+            rollBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            isRolling = false;
+        }
+
+        /* --- MOVE PAWN STEP BY STEP --- */
+        async function movePawn(steps) {
+            for (let i = 0; i < steps; i++) {
+                if (currentTile >= 36) break;
+                currentTile++;
+                sfx.step();
+                renderPawn();
+                updateUI();
+                await new Promise(r => setTimeout(r, 260));
+            }
+
+            // Tile Check after movement
+            await checkTileEvent();
+        }
+
+        /* --- TILE EVENT HANDLER --- */
+        async function checkTileEvent() {
+            const tileData = BOARD_TILES.find(t => t.id === currentTile);
+            if (!tileData) return;
+
+            // Check Finish
+            if (currentTile >= 36) {
+                currentTile = 36;
+                renderPawn();
+                updateUI();
+                setTimeout(triggerVictory, 400);
+                return;
+            }
+
+            // Check Question Tile
+            if (tileData.type === 'question') {
+                openQuestionModal(tileData.qIndex);
+                return;
+            }
+
+            // Check Ladder / Rest Encouragement
+            if (tileData.type === 'ladder') {
+                sfx.ladder();
+                showEventModal('✨ 觸發歷史捷徑！', tileData.msg, tileData.icon);
+                currentTile = tileData.target;
+                renderPawn();
+                updateUI();
+            } else if (tileData.type === 'trap') {
+                sfx.encouragement();
+                showEventModal('🌟 沒關係，我們繼續前進！', tileData.msg, tileData.icon);
+                currentTile = tileData.target;
+                renderPawn();
+                updateUI();
+            }
+        }
+
+        /* --- QUESTION MODAL LOGIC --- */
+        function openQuestionModal(qIndex) {
+            activeQuestion = QUESTION_BANK[qIndex % QUESTION_BANK.length];
+            
+            document.getElementById('qTag').innerText = `【 ${activeQuestion.tag} 】`;
+            document.getElementById('qTitle').innerText = activeQuestion.question;
+            
+            const optionsContainer = document.getElementById('qOptions');
+            const feedbackCard = document.getElementById('feedbackCard');
+            
+            optionsContainer.innerHTML = '';
+            optionsContainer.classList.remove('hidden');
+            feedbackCard.classList.add('hidden');
+
+            activeQuestion.options.forEach((optText, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full text-left bg-white hover:bg-amber-100 text-slate-800 font-bold p-3.5 rounded-xl border-2 border-amber-300 shadow-sm transition active:scale-98 flex items-center justify-between text-sm sm:text-base';
+                btn.innerHTML = `<span>${optText}</span> <span class="text-amber-500 font-black">➔</span>`;
+                btn.onclick = () => handleAnswer(i);
+                optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById('questionModal').classList.add('modal-active');
+        }
+
+        function handleAnswer(selectedIndex) {
+            const optionsContainer = document.getElementById('qOptions');
+            const feedbackCard = document.getElementById('feedbackCard');
+            const feedbackTitle = document.getElementById('feedbackTitle');
+            const feedbackText = document.getElementById('feedbackText');
+
+            optionsContainer.classList.add('hidden');
+            feedbackCard.classList.remove('hidden');
+
+            if (selectedIndex === activeQuestion.answer) {
+                // Correct
+                sfx.correct();
+                starCount += 10;
+                feedbackCard.className = 'p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-400 text-emerald-950 flex flex-col gap-2';
+                feedbackTitle.innerHTML = '🎉 答對了！太厲害了！ (+10 ⭐)';
+                feedbackText.innerText = activeQuestion.explanation;
+                updateStatus('🌟 答對題目，獎勵 +10 顆星星！');
+            } else {
+                // Incorrect
+                sfx.wrong();
+                feedbackCard.className = 'p-4 rounded-2xl bg-orange-50 border-2 border-orange-400 text-orange-950 flex flex-col gap-2';
+                feedbackTitle.innerHTML = '💪 差一點點！繼續加油！';
+                feedbackText.innerText = activeQuestion.explanation;
+                updateStatus('💡 答錯也沒關係，學到了新的歷史知識！');
+            }
+            updateUI();
+        }
+
+        function closeQuestionModal() {
+            document.getElementById('questionModal').classList.remove('modal-active');
+        }
+
+        /* --- EVENT MODAL LOGIC --- */
+        function showEventModal(title, desc, icon) {
+            document.getElementById('eventTitle').innerText = title;
+            document.getElementById('eventDesc').innerText = desc;
+            document.getElementById('eventIcon').innerText = icon;
+            document.getElementById('eventModal').classList.add('modal-active');
+        }
+
+        function closeEventModal() {
+            document.getElementById('eventModal').classList.remove('modal-active');
+        }
+
+        /* --- UPDATE UI METRICS --- */
+        function updateUI() {
+            document.getElementById('starCount').innerText = starCount;
+            document.getElementById('positionDisplay').innerText = `第 ${currentTile} 格`;
+            
+            // Progress percentage (out of 36 tiles)
+            const progressPercent = Math.min(100, Math.max(3, (currentTile / 36) * 100));
+            document.getElementById('progressBar').style.width = `${progressPercent}%`;
+        }
+
+        function updateStatus(msg) {
+            document.getElementById('statusMsg').innerText = msg;
+        }
+
+        /* --- RESET GAME --- */
+        function resetGame() {
+            currentTile = 1;
+            starCount = 0;
+            isRolling = false;
+            document.getElementById('diceResult').innerText = '1';
+            renderPawn();
+            updateUI();
+            updateStatus('🔄 遊戲已重置，準備好再次出發了嗎？');
+        }
+
+        /* --- VICTORY CELEBRATION --- */
+        function triggerVictory() {
+            sfx.victory();
+            document.getElementById('victoryStats').innerText = `闖關成功！你一共獲得了 ${starCount} 顆星星！`;
+            
+            // Star rating display
+            const star1 = document.getElementById('star1');
+            const star2 = document.getElementById('star2');
+            const star3 = document.getElementById('star3');
+            
+            star1.style.opacity = starCount >= 10 ? '1' : '0.2';
+            star2.style.opacity = starCount >= 30 ? '1' : '0.2';
+            star3.style.opacity = starCount >= 50 ? '1' : '0.2';
+
+            document.getElementById('victoryModal').classList.add('modal-active');
+            launchConfetti();
+        }
+
+        function closeVictoryModal() {
+            document.getElementById('victoryModal').classList.remove('modal-active');
+            document.getElementById('confettiCanvas').classList.add('hidden');
+        }
+
+        /* --- SIMPLE CANVAS CONFETTI --- */
+        function launchConfetti() {
+            const canvas = document.getElementById('confettiCanvas');
+            canvas.classList.remove('hidden');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const pieces = [];
+            const colors = ['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#ec4899', '#facc15'];
+
+            for (let i = 0; i < 120; i++) {
+                pieces.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height - canvas.height,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    speed: Math.random() * 4 + 2,
+                    angle: Math.random() * 360
+                });
+            }
+
+            let frame = 0;
+            function animateConfetti() {
+                if (frame > 180) {
+                    canvas.classList.add('hidden');
+                    return;
+                }
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                pieces.forEach(p => {
+                    p.y += p.speed;
+                    p.angle += 3;
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate((p.angle * Math.PI) / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                    ctx.restore();
+                });
+                frame++;
+                requestAnimationFrame(animateConfetti);
+            }
+            animateConfetti();
+        }
+
+        // Initialize board on load
+        window.onload = function() {
+            initBoard();
+        };
+    </script>
+</body>
+</html>
